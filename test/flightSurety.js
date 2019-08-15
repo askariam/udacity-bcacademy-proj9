@@ -644,19 +644,17 @@ contract('Flight Surety Tests', async (accounts) => {
                 // 'Index does not match oracle request' and 'Flight or timestamp do not match oracle request'
                 catch (e) {
                     if (e.reason != 'Index does not match oracle request' && e.reason != 'Flight or timestamp do not match oracle request') {
-                        if (e.reason == "Closed Responses!") {
-                            console.log("Reached required number of responses!");
-                            closedRequest = true;
-                            //break;
-                        }
-                        else {
                             console.log(e);
                             errorFound = true;
                             break; // break the loop.
                         }
 
-                    }
+                    
                     else {
+                        if (e.reason == "Flight or timestamp do not match oracle request")
+                        {
+                            console.log("Closed Request");
+                        }
                         continue;
                     }
                 }

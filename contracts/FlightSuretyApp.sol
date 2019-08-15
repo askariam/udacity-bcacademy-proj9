@@ -314,6 +314,9 @@ contract FlightSuretyApp {
     function payInsurance(address _airline, string _flight, uint256 _timestamp) external requireIsOperational
     {
         bytes32 flightKey = getFlightKey(_airline, _flight, _timestamp);
+        uint256 insAmount;
+        (,insAmount ) = dataContract.getInsuranceRecord(msg.sender, flightKey);
+        require (insAmount > 0, "No Credit to be Withdrawn!");
         dataContract.pay(msg.sender, flightKey);
     }
 
@@ -324,7 +327,7 @@ contract FlightSuretyApp {
     function processFlightStatus
                                 (
                                     address airline,
-                                    string memory flight,
+                                    string  flight,
                                     uint256 timestamp,
                                     uint8 statusCode
                                 )
@@ -460,19 +463,23 @@ contract FlightSuretyApp {
 
 
         bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp));
-        require(oracleResponses[key].isOpen, "Closed Responses!");
+        require(oracleResponses[key].isOpen, "Flight or timestamp do not match oracle request");
 
         oracleResponses[key].responses[statusCode].push(msg.sender);
 
         // Information isn't considered verified until at least MIN_RESPONSES
         // oracles respond with the *** same *** information
-        emit OracleReport(airline, flight, timestamp, statusCode);
+        // emit OracleReport(airline, flight, timestamp, statusCode);
         if (oracleResponses[key].responses[statusCode].length >= MIN_RESPONSES) {
+            
             oracleResponses[key].isOpen = false;
             emit FlightStatusInfo(airline, flight, timestamp, statusCode);
-
+            
             // Handle flight status as appropriate
             processFlightStatus(airline, flight, timestamp, statusCode);
+            
+            
+
         }
     }
 

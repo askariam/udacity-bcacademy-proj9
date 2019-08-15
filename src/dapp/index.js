@@ -34,7 +34,34 @@ import './flightsurety.css';
             contract.fetchFlightStatus(contract.flights[flight], (error, result) => {
                 display('Oracles', 'Trigger oracles', [{ label: 'Fetch Flight Status', error: error, value: result.flight + ' ' + result.timestamp }]);
             });
-        })
+        });
+
+
+
+        // withdraw credit
+        DOM.elid('withdraw-ins').addEventListener('click', () => {
+            let flight = DOM.elid('flight-number').value;
+            // Write transaction
+            // contract.flights[flight] returns the flight object
+            contract.withdrawCredit(contract.flights[flight], (error, result) => {
+                if (error)
+                {
+                    display('Withdraw Credit', 'Collect Insurance', [{ label: 'Insurance Result', error: error, value: '' }]);
+                }
+                else
+                {
+                    display('Withdraw Credit', 'Collect Insurance', [{ label: 'Passenger Credit', error: '', value: result.credit },
+                    { label: 'Passenger Balance', error: '', value: result.balance }
+                ]);
+
+                DOM.elid('withdraw-ins').disabled = true;
+
+                }
+                
+            });
+        });
+
+        DOM.elid('withdraw-ins').disabled = true;
 
         // user buy insurance
         DOM.elid('buy-ins').addEventListener('click', () => {
@@ -89,7 +116,12 @@ import './flightsurety.css';
                         display('Buy Insurance', '', [{
                             label: 'Insurance Status', error: '',
                             value: `Successful Insurance for flight ${result.flight} with value ${contract.web3.utils.fromWei(result.ethers, "ether")} Ether`
-                        }]);
+                        },
+                        {
+                            label: 'Passenger Balance', error: '',
+                            value: `${result.balance}`
+                        }
+                    ]);
                     }
                 })
             }
@@ -99,13 +131,32 @@ import './flightsurety.css';
         // to register/subscribe for the FlightStatusInfo event in the contract -> to be used to update status on the screen
         contract.receiveFlightStatus((error, flightInfo) => {
             if (error) {
-                display('Flight Info', 'Oracle Responses Result', [{ label: 'Flight Status', error: error, value: '' }]);
+                //display('Flight Info', 'Oracle Responses Result', [{ label: 'Flight Status', error: error, value: '' }]);
+                display('', '', [{ label: 'Flight Status', error: error, value: '' }]);
             }
             else {
-                display('Flight Info', 'Oracle Responses Result', [{
+                // display('Flight Info', 'Oracle Responses Result', [{
+                //     label: 'Fligh Status', error: '',
+                //     value: `Status of Flight: ${flightInfo.flight} is ${flightInfo.statusText}`
+                // }]);
+                if (flightInfo.credit > 0)
+                {
+                    DOM.elid('withdraw-ins').disabled = false;
+                }
+
+                display('', '', [{
                     label: 'Fligh Status', error: '',
                     value: `Status of Flight: ${flightInfo.flight} is ${flightInfo.statusText}`
-                }]);
+                },
+                {
+                    label: 'Passenger Credit', error: '',
+                    value: `${flightInfo.credit}`
+                },
+                {
+                    label: 'Passenger Balance', error: '',
+                    value: `${flightInfo.balance}`
+                }
+            ]);
             }
 
         });

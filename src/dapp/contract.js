@@ -72,7 +72,7 @@ export default class Contract {
             }
 
             try {
-                await this.flightSuretyData.methods.authorizeCaller(this.conf.appAddress).send({ from: this.owner });
+                await this.flightSuretyData.methods.authorizeCaller(this.conf.appAddress).send({ from: this.owner, gas: 6666666 });
                 // try to fund the first airline to be able to register flights.
                 await this.flightSuretyApp.methods.fundAirline().send({
                     from: this.airlines[0],
@@ -122,6 +122,39 @@ export default class Contract {
             });
     }
 
+    // withdraw credit
+    //function payInsurance(address _airline, string _flight, uint256 _timestamp) external requireIsOperational
+    async withdrawCredit(flight, callback) {
+        let self = this;
+        //console.log(flight);
+        
+        let payload = {
+            airline: self.airlines[0],
+            flight: flight.flight,
+            timestamp: Math.floor(Date.now() / 1000),
+            flightObj: flight,
+            passenger: self.passengers[0]
+        }
+        try {
+            await self.flightSuretyApp.methods
+            .payInsurance(payload.airline, payload.flight, payload.flightObj.timestamp)
+            .send({ from: payload.passenger, gas: 6666666 });
+
+            let balance = await self.web3.eth.getBalance(self.passengers[0]);
+            let credit = await self.flightSuretyApp.methods.getPassengerCredit(payload.passenger, payload.airline, payload.flight, payload.flightObj.timestamp).call( {from: self.owner, gas: 6666666});
+            payload.balance = balance;
+            payload.credit = credit;
+
+            callback(null, payload);
+
+        }
+        catch (e)
+        {
+            callback(e, null);
+        }
+    }
+
+
     //simulate buying insurance by passenger[0]. This will be the passenger being used for testing
     async buyInsurance(flight, ethers, callback) {
         //receiving flight object (flight is object here)
@@ -137,6 +170,7 @@ export default class Contract {
             await self.flightSuretyApp.methods
                 .buyInsurance(payload.airline, payload.flight, payload.timestamp)
                 .send({ from: self.passengers[0], value: payload.ethers, gas: 6666666 });
+                payload.balance = await this.web3.eth.getBalance(self.passengers[0]);
             callback(null, payload);
         }
         catch (e) {
@@ -166,11 +200,12 @@ export default class Contract {
 
     // receiving FlightStatusInfo event
     async receiveFlightStatus(callback) {
+        let self = this;
         this.flightSuretyApp.events.FlightStatusInfo({
             fromBlock: await this.web3.eth.getBlockNumber()
-        }, (err, event) => {
+        }, async (err, event) => {
 
-
+            console.log(event.returnValues);
             if (err) {
                 console.log(err);
                 callback(err, null);
@@ -178,7 +213,19 @@ export default class Contract {
             else {
                 // getting the response of oracles and adding the text of the status
                 let obj = event.returnValues;
-                obj.statusText = this.flightStatus[obj.status];
+                console.log(obj.status);
+                obj.statusText = self.flightStatus[obj.status];
+                let balance = await self.web3.eth.getBalance(self.passengers[0]);
+                let credit = await self.flightSuretyApp.methods.getPassengerCredit(self.passengers[0], obj.airline, obj.flight, obj.timestamp).call( {from: self.owner, gas: 6666666});
+                obj.balance = balance;
+                obj.credit = credit;
+                if (obj.status == 20)
+                {
+                    //getPassengerCredit(address _passenger, address _airline, string _flight, uint256 _timestamp)
+                    
+                    //onsole.log("credit " + credit);
+                    //.send({ from: self.passengers[0]});
+                }
                 //console.log(obj);
                 callback(null, obj);
             }
